@@ -105,7 +105,7 @@ uv pip install \
     "transformers>=4.35.0" \
     "peft>=0.7.0" \
     "accelerate>=0.24.0" \
-    "bitsandbytes>=0.41.0" \
+    "bitsandbytes>=0.45.0" \
     "datasets>=2.14.0" \
     "sentencepiece>=0.1.99" \
     "protobuf>=3.20.0" \

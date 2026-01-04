@@ -21,6 +21,7 @@ eval/
 
 # Strange files (should not exist)
 =*
+tests/vllm_metrics_results.json
 
 # Jupyter
 .ipynb_checkpoints/

@@ -8,6 +8,7 @@ help:
 	@echo "  test       - Run inference sanity check"
 	@echo "  serve      - Start vLLM OpenAI-compatible server (must run first)"
 	@echo "  serve-test - Run vLLM baseline output capture test (requires serve to be running)"
+	@echo "  serve-metrics - Run vLLM performance metrics and hardware compatibility test"
 	@echo "  serve-stop - Stop vLLM server and clean up processes"
 	@echo "  clean-temp - Clean up temporary =* files"
 	@echo "  clean      - Clean up generated files and caches"
@@ -30,6 +31,9 @@ serve:
 
 serve-test:
 	@bash -c "source scripts/activate_env.sh && python tests/test_vllm_baseline.py"
+
+serve-metrics:
+	@bash -c "source scripts/activate_env.sh && python tests/test_vllm_metrics.py"
 
 serve-stop:
 	@./scripts/stop_server.sh

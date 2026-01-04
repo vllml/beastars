@@ -131,7 +131,51 @@ python tests/test_vllm_baseline.py
 
 **If prerequisites fail**, the test will provide detailed instructions on what to do.
 
-#### Step 3: Stop the Server (when done)
+#### Step 3: Run Performance Metrics Test (Optional)
+
+Benchmark vLLM performance and compare hardware compatibility:
+
+```bash
+make serve-metrics
+```
+
+Or manually:
+
+```bash
+source scripts/activate_env.sh
+python tests/test_vllm_metrics.py
+```
+
+**What the metrics test does:**
+1. **Collects system information:**
+   - Python version, CUDA version, PyTorch version
+   - GPU details (name, memory, compute capability)
+2. **Tests single request latency:**
+   - Measures latency for different prompt lengths
+   - Calculates tokens per second
+   - Records time to first token (if available)
+3. **Tests batch processing:**
+   - Concurrent request handling (1, 2, 4 requests)
+   - Throughput measurement
+   - Batch efficiency metrics
+4. **Monitors GPU memory usage:**
+   - Memory allocation and utilization
+   - Per-GPU statistics
+5. **Saves results** to `tests/vllm_metrics_results.json` for comparison
+
+**Customization:**
+```bash
+# Custom API endpoint
+VLLM_API_BASE=http://localhost:8001 make serve-metrics
+
+# More requests per test
+python tests/test_vllm_metrics.py --num-requests 10
+
+# Longer generations
+python tests/test_vllm_metrics.py --max-tokens 200
+```
+
+#### Step 4: Stop the Server (when done)
 
 When you're finished testing, stop the server:
 
@@ -148,6 +192,17 @@ This will:
 ```bash
 vllm serve Qwen/Qwen2.5-1.5B-Instruct --dtype auto --api-key localtoken
 ```
+
+**Hardware Compatibility Comparison:**
+
+The `make serve-metrics` test generates a JSON report (`tests/vllm_metrics_results.json`) that includes:
+- Token generation speed (tokens/second)
+- Latency metrics (average, per-request)
+- Batch processing throughput
+- GPU memory utilization
+- System specifications
+
+You can compare these metrics across different hardware setups to evaluate performance characteristics.
 
 #### Troubleshooting
 

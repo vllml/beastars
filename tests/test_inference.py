@@ -42,7 +42,21 @@ def test_inference_3b_model(model_name="microsoft/Phi-3-mini-4k-instruct", use_q
     gpu_available = torch.cuda.is_available()
     
     # Configure quantization for memory efficiency
+    # Check if bitsandbytes is available and working
+    bnb_available = False
     if use_quantization and gpu_available:
+        try:
+            import bitsandbytes as bnb
+            # Try to import the validation function to check if bnb is fully functional
+            from transformers.integrations import validate_bnb_backend_availability
+            validate_bnb_backend_availability()
+            bnb_available = True
+        except (ImportError, ModuleNotFoundError, Exception) as e:
+            print(f"\nBitsAndBytes not available or incompatible: {e}")
+            print("Falling back to full precision...")
+            bnb_available = False
+    
+    if bnb_available:
         print("\nUsing 4-bit quantization (BitsAndBytes)...")
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -79,14 +93,30 @@ def test_inference_3b_model(model_name="microsoft/Phi-3-mini-4k-instruct", use_q
         print(f"Model loaded in {load_time:.2f} seconds")
     except Exception as e:
         print(f"Error loading model: {e}")
-        print("Trying alternative model: microsoft/phi-2")
-        model_name = "microsoft/phi-2"
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            **model_kwargs
-        )
+        # If quantization failed, try without quantization
+        if bnb_available and "quantization" in str(e).lower() or "bitsandbytes" in str(e).lower():
+            print("Quantization failed, retrying without quantization...")
+            if gpu_available:
+                model_kwargs = {
+                    "torch_dtype": torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
+                    "device_map": "auto",
+                }
+            else:
+                model_kwargs = {"torch_dtype": torch.float32}
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                **model_kwargs
+            )
+        else:
+            print("Trying alternative model: microsoft/phi-2")
+            model_name = "microsoft/phi-2"
+            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                **model_kwargs
+            )
         load_time = time.time() - start_time
         print(f"Model loaded in {load_time:.2f} seconds")
     
@@ -111,16 +141,34 @@ def test_inference_3b_model(model_name="microsoft/Phi-3-mini-4k-instruct", use_q
     print("\nGenerating response...")
     print("-" * 60)
     
-    with torch.cuda.amp.autocast(enabled=gpu_available, dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16):
+    # Use torch.amp.autocast instead of deprecated torch.cuda.amp.autocast
+    autocast_dtype = torch.bfloat16 if (gpu_available and torch.cuda.is_bf16_supported()) else torch.float16
+    with torch.amp.autocast(device_type="cuda" if gpu_available else "cpu", enabled=gpu_available, dtype=autocast_dtype):
         start_time = time.time()
         with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=100,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=tokenizer.eos_token_id,
-            )
+            try:
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=100,
+                    temperature=0.7,
+                    do_sample=True,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+            except AttributeError as e:
+                if "seen_tokens" in str(e) or "DynamicCache" in str(e):
+                    # Compatibility issue with some models - try without past_key_values
+                    print(f"Warning: Generation compatibility issue ({e}), retrying with adjusted settings...")
+                    outputs = model.generate(
+                        input_ids=inputs["input_ids"],
+                        attention_mask=inputs.get("attention_mask"),
+                        max_new_tokens=100,
+                        temperature=0.7,
+                        do_sample=True,
+                        pad_token_id=tokenizer.eos_token_id,
+                        use_cache=False,  # Disable KV cache to avoid compatibility issues
+                    )
+                else:
+                    raise
         generation_time = time.time() - start_time
     
     # Decode
