@@ -1,0 +1,38 @@
+[project]
+name = "beastars"
+version = "0.1.0"
+description = "colonelGPT training course"
+requires-python = ">=3.12"
+dependencies = [
+    # Note: PyTorch and flash-attn are pinned to specific versions in setup_env.sh for stability:
+    # - PyTorch: 2.5.1 (with CUDA support) - compatible with flash-attn 2.8.3
+    # - flash-attn: 2.8.3 - compatible with PyTorch 2.5.1
+    # These are installed separately to ensure compatibility. uv will use the already-installed versions.
+    "torch>=2.0.0",
+    "transformers>=4.35.0",  # vLLM will manage the exact version
+    "peft>=0.7.0",
+    "accelerate>=0.24.0",
+    "bitsandbytes>=0.41.0",
+    "datasets>=2.14.0",
+    "sentencepiece>=0.1.99",
+    "protobuf>=3.20.0",
+    "packaging>=21.0",
+    "ninja>=1.11.0",
+    "einops>=0.7.0",
+    "safetensors>=0.4.0",
+    "huggingface-hub>=0.19.0",
+    "tokenizers>=0.15.0",
+    "litgpt>=0.2.0",
+    "axolotl>=0.4.0",
+    "wandb>=0.16.0",
+    "tensorboard>=2.15.0",
+    # flash-attn is installed separately in setup script with build dependencies
+    # "flash-attn>=2.3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Dev dependencies - install with: uv pip install pytest black ruff ipython
+# Note: dependency-groups syntax is being worked on in uv
